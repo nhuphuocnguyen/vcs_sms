@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nhuphuocnguyen/vcs_sms/daos"
@@ -84,10 +85,40 @@ func GetServerHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"total": count, "data": array})
 }
 
+func UpdateServerHandler(c *gin.Context) {
+	id, errs := strconv.Atoi(c.Param("server_id"))
+	if errs != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error()})
+		return
+	}
+	var server models.Server
+	if err := c.ShouldBindJSON(&server); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error()})
+		return
+	}
+	serverDAO := daos.ServerDAO{Db: db}
+	id, err := serverDAO.UpdateServer(server, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error()})
+		return
+	}
+	server.Server_id = id
+	c.JSON(http.StatusOK, server)
+
+}
+
+func DeleteServerHandler(c *gin.Context) {
+
+}
 func main() {
 	connectDB()
 	router := gin.Default()
 	router.POST("/servers", NewServerHandler)
 	router.GET("/servers", GetServerHandler)
+	router.PUT("/servers/:server_id", UpdateServerHandler)
+	router.DELETE("/recipes/:id", DeleteServerHandler)
 	router.Run()
 }
