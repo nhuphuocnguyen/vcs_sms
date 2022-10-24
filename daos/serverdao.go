@@ -35,6 +35,17 @@ func (sd *ServerDAO) UpdateServer(server models.Server, ids int) (int, error) {
 	return ids, nil
 }
 
+func (sd *ServerDAO) DeleteServer(server models.Server, ids int) (int, error) {
+	sqlStatement := `
+	DELETE from vcs_server
+	WHERE server_id = $1;`
+	_, err := sd.Db.Exec(sqlStatement, ids)
+	if err != nil {
+		return 0, err
+	}
+	return ids, nil
+}
+
 func (sd *ServerDAO) Count() (int, error) {
 	var count int
 	row := sd.Db.QueryRow("SELECT COUNT(*) FROM vcs_server")
@@ -62,7 +73,6 @@ func (sd *ServerDAO) Listserver() ([]models.Server, error) {
 
 		array = append(array, sever)
 	}
-
 	err = rows.Err()
 	if err != nil {
 		return nil, err

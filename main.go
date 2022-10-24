@@ -111,6 +111,22 @@ func UpdateServerHandler(c *gin.Context) {
 }
 
 func DeleteServerHandler(c *gin.Context) {
+	id, errs := strconv.Atoi(c.Param("server_id"))
+	if errs != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error()})
+		return
+	}
+	var server models.Server
+	serverDAO := daos.ServerDAO{Db: db}
+	id, err := serverDAO.DeleteServer(server, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error()})
+		return
+	}
+	server.Server_id = id
+	c.JSON(http.StatusOK, server)
 
 }
 func main() {
@@ -119,6 +135,6 @@ func main() {
 	router.POST("/servers", NewServerHandler)
 	router.GET("/servers", GetServerHandler)
 	router.PUT("/servers/:server_id", UpdateServerHandler)
-	router.DELETE("/recipes/:id", DeleteServerHandler)
+	router.DELETE("servers/:server_id", DeleteServerHandler)
 	router.Run()
 }
