@@ -8,3 +8,5 @@ type Server struct {
 	Last_updated int    `json:"last_updated"`
 	Ipv4         string `json:"ipv4"`
 }
+
+

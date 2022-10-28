@@ -26,9 +26,9 @@ func (sd *ServerDAO) CreateServer(server models.Server) (int, error) {
 func (sd *ServerDAO) UpdateServer(server models.Server, ids int) (int, error) {
 	sqlStatement := `
 	UPDATE vcs_server
-	SET server_name=$2, status=$3, created_time=$4,last_updated=$5,ipv4=$6
+	SET server_name=$2, status=$3,last_updated=$4,ipv4=$5
 	WHERE server_id = $1;`
-	_, err := sd.Db.Exec(sqlStatement, ids, server.Server_name, server.Status, server.Created_time, server.Last_updated, server.Ipv4)
+	_, err := sd.Db.Exec(sqlStatement, ids, server.Server_name, server.Status, server.Last_updated, server.Ipv4)
 	if err != nil {
 		return 0, err
 	}
@@ -45,6 +45,19 @@ func (sd *ServerDAO) DeleteServer(server models.Server, ids int) (int, error) {
 	}
 	return ids, nil
 }
+func (sd *ServerDAO) Get(id int) (*models.Server, error) {
+	sqlStatement := `
+	Select server_id,server_name, status, created_time,last_updated,ipv4 from vcs_server
+	Where server_id=$1;`
+	row := sd.Db.QueryRow(sqlStatement, id)
+	var server models.Server
+	err := row.Scan(&server.Server_id, &server.Server_name, &server.Status, &server.Created_time, &server.Last_updated, &server.Ipv4)
+	if err != nil {
+		return nil, err
+	}
+	return &server, nil
+
+}
 
 func (sd *ServerDAO) Count() (int, error) {
 	var count int
@@ -56,8 +69,12 @@ func (sd *ServerDAO) Count() (int, error) {
 	return count, nil
 
 }
-func (sd *ServerDAO) Listserver() ([]models.Server, error) {
-	rows, err := sd.Db.Query("SELECT server_id,server_name, status, created_time,last_updated,ipv4 FROM vcs_server order by server_id ")
+func (sd *ServerDAO) Listserver(sort string, from int, size int) ([]models.Server, error) {
+	rows, err := sd.Db.Query(`
+	SELECT server_id,server_name, status, created_time,last_updated,ipv4 
+	FROM vcs_server order by $1
+	Offset $2
+	limit $3;`, sort, from, size)
 	if err != nil {
 		return nil, err
 	}
