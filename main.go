@@ -81,6 +81,7 @@ func GetServerHandler(c *gin.Context) {
 		return
 	}
 	sort := c.Query("sort")
+	option := c.Query("option")
 	// var newserver daos.ServerDAO
 	serverDAO := daos.ServerDAO{Db: db}
 
@@ -92,7 +93,7 @@ func GetServerHandler(c *gin.Context) {
 		return
 	}
 	// lay danh sach server tu database
-	array, err := serverDAO.Listserver(sort, from, size)
+	array, err := serverDAO.Listserver(sort, option, from, size)
 	// xu ly loi
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -169,13 +170,14 @@ func ExportExcelHandle(c *gin.Context) {
 		return
 	}
 	sort := c.Query("sort")
+	option := c.Query("option")
 	f := excelize.NewFile()
 	index := f.NewSheet("Sheet1")
 	serverDAO := daos.ServerDAO{Db: db}
 
 	var servers []models.Server
 
-	servers, err = serverDAO.Listserver(sort, from, size)
+	servers, err = serverDAO.Listserver(sort, option, from, size)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error()})
@@ -197,6 +199,10 @@ func ExportExcelHandle(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "message": "file has been created successfully"})
 
 }
+
+func ImportExcelHandle(c *gin.Context){
+	
+}
 func main() {
 	connectDB()
 	router := gin.Default()
@@ -204,5 +210,7 @@ func main() {
 	router.GET("/servers", GetServerHandler)
 	router.PUT("/servers/:server_id", UpdateServerHandler)
 	router.DELETE("servers/:server_id", DeleteServerHandler)
+	router.GET("/servers/excel/export", ExportExcelHandle)
+	router.POST("/servers/excel/import", ImportExcelHandle)
 	router.Run()
 }

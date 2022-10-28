@@ -69,12 +69,23 @@ func (sd *ServerDAO) Count() (int, error) {
 	return count, nil
 
 }
-func (sd *ServerDAO) Listserver(sort string, from int, size int) ([]models.Server, error) {
-	rows, err := sd.Db.Query(`
+func (sd *ServerDAO) Listserver(sort string, option string, from int, size int) ([]models.Server, error) {
+	var rows *sql.Rows
+	var err error
+	if option == "DESC" {
+		rows, err = sd.Db.Query(`
 	SELECT server_id,server_name, status, created_time,last_updated,ipv4 
-	FROM vcs_server order by $1
+	FROM vcs_server order by $1 DESC
 	Offset $2
 	limit $3;`, sort, from, size)
+	}
+	if option == "ASC" {
+		rows, err = sd.Db.Query(`
+	SELECT server_id,server_name, status, created_time,last_updated,ipv4 
+	FROM vcs_server order by $1 ASC
+	Offset $2
+	limit $3;`, sort, from, size)
+	}
 	if err != nil {
 		return nil, err
 	}
