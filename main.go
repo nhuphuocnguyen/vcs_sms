@@ -141,7 +141,7 @@ func DeleteServerHandler(c *gin.Context) {
 		return
 	}
 	server.Server_id = id
-	c.JSON(http.StatusOK, server)
+	c.JSON(http.StatusOK, gin.H{"message": "delete success"})
 
 }
 
