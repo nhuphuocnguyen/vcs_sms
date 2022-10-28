@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/gin-gonic/gin"
 	"github.com/nhuphuocnguyen/vcs_sms/daos"
 	"github.com/nhuphuocnguyen/vcs_sms/models"
+	"github.com/xuri/excelize/v2"
 
 	_ "github.com/lib/pq"
 )
@@ -105,12 +105,7 @@ func GetServerHandler(c *gin.Context) {
 }
 
 func UpdateServerHandler(c *gin.Context) {
-	id, errs := strconv.Atoi(c.Param("server_id"))
-	if errs != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error()})
-		return
-	}
+	id := c.Param("server_id")
 	var server models.Server
 	now := time.Now().Unix()
 	if err := c.ShouldBindJSON(&server); err != nil {
@@ -137,12 +132,7 @@ func UpdateServerHandler(c *gin.Context) {
 }
 
 func DeleteServerHandler(c *gin.Context) {
-	id, errs := strconv.Atoi(c.Param("server_id"))
-	if errs != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error()})
-		return
-	}
+	id := c.Param("server_id")
 	var server models.Server
 	serverDAO := daos.ServerDAO{Db: db}
 	id, err := serverDAO.DeleteServer(server, id)
@@ -200,9 +190,115 @@ func ExportExcelHandle(c *gin.Context) {
 
 }
 
-func ImportExcelHandle(c *gin.Context){
-	
+func ImportExcelHandle(c *gin.Context) {
+	file, err := c.FormFile("ImportServer.xlsx")
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"status": "error", "message": "Failed to import Database to the excel", "error": err.Error()})
+		return
+	}
+	f, err := excelize.OpenFile(file.Filename)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"status": "error", "message": "Failed to import Database to the excel", "error": err})
+		return
+	}
+
+	rows, err := f.GetRows("Sheet1")
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+	now := time.Now().Unix()
+	serverDAO := daos.ServerDAO{Db: db}
+	servers, err := serverDAO.Listserver("server_id", "DESC", 0, 10000)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error()})
+		return
+	}
+
+	serversImport := make([]models.Server, 0)
+
+	serversAccept := make([]models.ImportExcel, 0)
+	serversFail := make([]models.ImportExcel, 0)
+	if len(servers) != 0 {
+		for _, server := range servers {
+			for _, row := range rows {
+				if len(row) != 0 {
+					if server.Server_name == row[1] {
+						newServerFail := models.ImportExcel{
+							Server_id:   row[0],
+							Server_name: row[1],
+							Status:      row[2],
+							Ipv4:        row[3],
+						}
+						serversFail = append(serversFail, newServerFail)
+						continue
+					}
+					newServer := models.Server{
+						Server_id:    row[0],
+						Server_name:  row[1],
+						Status:       row[2],
+						Created_time: int(now),
+						Last_updated: int(now),
+						Ipv4:         row[3],
+					}
+					serverDAO := daos.ServerDAO{Db: db}
+	                id, err := serverDAO.CreateServer(newServer)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": err.Error()})
+						return
+					}
+					newServer.Server_id = id
+	                c.JSON(http.StatusOK, newServer)
+					serversImport = append(serversImport, newServer)
+
+					newServerAccept := models.ImportExcel{
+						Server_id:   row[0],
+						Server_name: row[1],
+						Status:      row[2],
+						Ipv4:        row[3],
+					}
+					serversAccept = append(serversAccept, newServerAccept)
+				}
+			}
+		}
+	} else {
+		for _, row := range rows {
+			if len(row) != 0 {
+				newServer := models.Server{
+					Server_id:    row[0],
+					Server_name:  row[1],
+					Status:       row[2],
+					Ipv4:         row[3],
+					Created_time: int(now),
+					Last_updated: int(now),
+				}
+                serverDAO := daos.ServerDAO{Db: db}
+	                id, err := serverDAO.CreateServer(newServer)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": err.Error()})
+						return
+					}
+					newServer.Server_id = id
+	                c.JSON(http.StatusOK, newServer)
+				serversImport = append(serversImport, newServer)
+
+				newServerAccept := models.ImportExcel{
+					Server_id:   row[0],
+					Server_name: row[1],
+					Status:      row[2],
+					Ipv4:        row[3],
+				}
+				serversAccept = append(serversAccept, newServerAccept)
+			}
+		}
+	}
+     
+	c.JSON(http.StatusCreated, gin.H{"status": gin.H{"ImportEccept": gin.H{"CountAccept": len(serversAccept), "data": serversAccept}, "ImportFail": gin.H{"CountFail": len(serversFail), "data": serversFail}}})
 }
+
 func main() {
 	connectDB()
 	router := gin.Default()

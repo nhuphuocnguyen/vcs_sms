@@ -10,42 +10,41 @@ type ServerDAO struct {
 	Db *sql.DB
 }
 
-func (sd *ServerDAO) CreateServer(server models.Server) (int, error) {
+func (sd *ServerDAO) CreateServer(server models.Server) (string, error) {
 	sqlStatement := `
-	INSERT INTO vcs_server (server_name, status, created_time,last_updated,ipv4)
-	VALUES ($1, $2, $3, $4,$5)
-	RETURNING server_id`
-	id := 0
-	err := sd.Db.QueryRow(sqlStatement, server.Server_name, server.Status, server.Created_time, server.Last_updated, server.Ipv4).Scan(&id)
+	INSERT INTO vcs_server (server_id,server_name, status, created_time,last_updated,ipv4)
+	VALUES ($1, $2, $3, $4,$5,$6)`
+	id := ""
+	err := sd.Db.QueryRow(sqlStatement, server.Server_id, server.Server_name, server.Status, server.Created_time, server.Last_updated, server.Ipv4).Scan(&id)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return id, nil
 }
 
-func (sd *ServerDAO) UpdateServer(server models.Server, ids int) (int, error) {
+func (sd *ServerDAO) UpdateServer(server models.Server, ids string) (string, error) {
 	sqlStatement := `
 	UPDATE vcs_server
 	SET server_name=$2, status=$3,last_updated=$4,ipv4=$5
 	WHERE server_id = $1;`
 	_, err := sd.Db.Exec(sqlStatement, ids, server.Server_name, server.Status, server.Last_updated, server.Ipv4)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return ids, nil
 }
 
-func (sd *ServerDAO) DeleteServer(server models.Server, ids int) (int, error) {
+func (sd *ServerDAO) DeleteServer(server models.Server, ids string) (string, error) {
 	sqlStatement := `
 	DELETE from vcs_server
 	WHERE server_id = $1;`
 	_, err := sd.Db.Exec(sqlStatement, ids)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	return ids, nil
 }
-func (sd *ServerDAO) Get(id int) (*models.Server, error) {
+func (sd *ServerDAO) Get(id string) (*models.Server, error) {
 	sqlStatement := `
 	Select server_id,server_name, status, created_time,last_updated,ipv4 from vcs_server
 	Where server_id=$1;`
