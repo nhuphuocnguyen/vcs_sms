@@ -10,16 +10,15 @@ type ServerDAO struct {
 	Db *sql.DB
 }
 
-func (sd *ServerDAO) CreateServer(server models.Server) (string, error) {
+func (sd *ServerDAO) CreateServer(server models.Server)  error {
 	sqlStatement := `
 	INSERT INTO vcs_server (server_id,server_name, status, created_time,last_updated,ipv4)
 	VALUES ($1, $2, $3, $4,$5,$6)`
-	id := ""
-	err := sd.Db.QueryRow(sqlStatement, server.Server_id, server.Server_name, server.Status, server.Created_time, server.Last_updated, server.Ipv4).Scan(&id)
+	err := sd.Db.QueryRow(sqlStatement, server.Server_id, server.Server_name, server.Status, server.Created_time, server.Last_updated, server.Ipv4).Err()
 	if err != nil {
-		return "", err
+		return err
 	}
-	return id, nil
+	return  nil
 }
 
 func (sd *ServerDAO) UpdateServer(server models.Server, ids string) (string, error) {

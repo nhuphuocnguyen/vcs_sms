@@ -54,7 +54,7 @@ func NewServerHandler(c *gin.Context) {
 
 	// luu vao database
 	serverDAO := daos.ServerDAO{Db: db}
-	id, err := serverDAO.CreateServer(server)
+	err := serverDAO.CreateServer(server)
 
 	// neu co loi => 500
 	if err != nil {
@@ -63,7 +63,6 @@ func NewServerHandler(c *gin.Context) {
 		return
 	}
 	// khong loi => tra ve thong tin server da luu
-	server.Server_id = id
 	c.JSON(http.StatusOK, server)
 }
 
@@ -191,7 +190,7 @@ func ExportExcelHandle(c *gin.Context) {
 }
 
 func ImportExcelHandle(c *gin.Context) {
-	file, err := c.FormFile("ImportServer.xlsx")
+	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"status": "error", "message": "Failed to import Database to the excel", "error": err.Error()})
 		return
@@ -224,7 +223,7 @@ func ImportExcelHandle(c *gin.Context) {
 		for _, server := range servers {
 			for _, row := range rows {
 				if len(row) != 0 {
-					if server.Server_name == row[1] {
+					if server.Server_name == row[1] || server.Server_id == row[0] {
 						newServerFail := models.ImportExcel{
 							Server_id:   row[0],
 							Server_name: row[1],
@@ -243,14 +242,8 @@ func ImportExcelHandle(c *gin.Context) {
 						Ipv4:         row[3],
 					}
 					serverDAO := daos.ServerDAO{Db: db}
-	                id, err := serverDAO.CreateServer(newServer)
-					if err != nil {
-						c.JSON(http.StatusInternalServerError, gin.H{
-							"error": err.Error()})
-						return
-					}
-					newServer.Server_id = id
-	                c.JSON(http.StatusOK, newServer)
+					_ = serverDAO.CreateServer(newServer)
+
 					serversImport = append(serversImport, newServer)
 
 					newServerAccept := models.ImportExcel{
@@ -274,15 +267,9 @@ func ImportExcelHandle(c *gin.Context) {
 					Created_time: int(now),
 					Last_updated: int(now),
 				}
-                serverDAO := daos.ServerDAO{Db: db}
-	                id, err := serverDAO.CreateServer(newServer)
-					if err != nil {
-						c.JSON(http.StatusInternalServerError, gin.H{
-							"error": err.Error()})
-						return
-					}
-					newServer.Server_id = id
-	                c.JSON(http.StatusOK, newServer)
+				serverDAO := daos.ServerDAO{Db: db}
+				_ = serverDAO.CreateServer(newServer)
+
 				serversImport = append(serversImport, newServer)
 
 				newServerAccept := models.ImportExcel{
@@ -295,8 +282,9 @@ func ImportExcelHandle(c *gin.Context) {
 			}
 		}
 	}
-     
-	c.JSON(http.StatusCreated, gin.H{"status": gin.H{"ImportEccept": gin.H{"CountAccept": len(serversAccept), "data": serversAccept}, "ImportFail": gin.H{"CountFail": len(serversFail), "data": serversFail}}})
+
+	c.JSON(http.StatusOK, gin.H{"status": gin.H{"ImportAccept": gin.H{"CountServerAccept": len(serversAccept), "data": serversAccept}, "ImportFail": gin.H{"CountServerFail": len(serversFail), "data": serversFail}}})
+
 }
 
 func main() {
